@@ -4,7 +4,6 @@
 #include <cuda.h>
 #include "utilityarray.h"
 #include "operations.h" 
-
 #define R 30
 #define C 3
 
@@ -18,6 +17,7 @@ void calAllForcesGravitational_GPU(float *h_Forces,float *h_dist,float *h_mass,f
 void checkCUDAError(const char *msg);
 __global__ void kernel(float *F,float *points,float *dist,float *mass,int M,int numVar);
 Particules min(float *vector,int SIZE);
+
 
 float x1[R][C]={   {0.1506, 0.0898, 0.0229},
 					{0.2145, 0.1316, 0.2570},
@@ -65,7 +65,15 @@ int main()
 	float modifier = 0.9;
     float d, distp, t;
 	int op1, op2, a, b;
-	 
+ 	
+ 	// DECLARACION E INICIALIZACION DE VARIABLES DEL TEMPORIZADOR EN EL GPU
+  	float time; 
+  	cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+
+    //////////////////////////////////////
+
     float *x;
     x=(float*)malloc(sizeM*sizeN);
 
@@ -98,8 +106,14 @@ int main()
 		initializateArray(dist, SIZE*SIZE, 0);
 
 		/***Calculate all interacting forces in the system***/
-		//calAllForcesGravitational_CPU(F,dist,m,x,SIZE,numVars);
-   		calAllForcesGravitational_GPU(F,dist,m,x,SIZE,C);
+		cudaEventRecord(start, 0);
+		calAllForcesGravitational_CPU(F,dist,m,x,SIZE,C);
+		//calAllForcesGravitational_GPU(F,dist,m,x,SIZE,C);
+		cudaEventRecord(stop, 0);    
+    	cudaEventSynchronize(stop); 
+    	cudaEventElapsedTime( &time, start, stop );
+    	printf("TIEMPO DE EJECUCION EN GPU: %f ms\n\n",time);
+    	getchar();
 		/******************Reorder particule Data*******************/
 		printMatrix(F,SIZE,SIZE,"FUERZAS GRAVITACIONALES CALCULADAS");
 		index=SortSumAllColumns(F,SIZE);
@@ -158,6 +172,8 @@ int main()
 		SIZE=newSize;
 	}
 	printMatrix(F,SIZE,SIZE,"RESULTADO FINAL");
+	cudaEventDestroy( start ); // GC DEL TEMPORIZADOR
+    cudaEventDestroy( stop );  // GC DEL TEMPORIZADOR
 	free(m);
 	free(x);
 	free(F);
