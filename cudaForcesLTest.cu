@@ -56,31 +56,18 @@ int main()
 {  
     int i,k,j;
     int J=R;
-    size_t sizeM = J * sizeof(float);           // para representar tamaños cuando se usa el sizeof()
-     size_t sizeN= C* sizeof(float); 
-   int SIZE=J;
-
-  
+    size_t sizeM = J * sizeof(float);     
+    size_t sizeN= C* sizeof(float); 
+   	int SIZE=J;
 	int INTERACTIONS_EXIST = 1;
 	int iters=0;
-	
 	float radius = 0.5;
 	float modifier = 0.9;
+    float d, distp, t;
+	int op1, op2, a, b;
 	 
-
-
     float *x;
     x=(float*)malloc(sizeM*sizeN);
-
-     /////////////////////////
-    for(i=0;i<R;i++)
-    {
-        for(j=0;j<C;j++)
-        {
-            x[i*C+j]=x1[i][j];
-        }
-    }
-
 
     float *F;
     F = (float*)malloc(sizeM*sizeM);  
@@ -92,13 +79,16 @@ int main()
     m= (float*)malloc(sizeM); 
 
     int *index;
-
     initializateArray(m,J,100);
-    /////////////////////////////////////
-
-    float d, distp, t;
-	int op1, op2, a, b;
-	
+    //COPY ARRAY GLOBAL TO ARRAY LOCAL
+    for(i=0;i<R;i++)
+    {
+        for(j=0;j<C;j++)
+        {
+            x[i*C+j]=x1[i][j];
+        }
+    }
+  
 	while(INTERACTIONS_EXIST ==1)
 	{
 		 
@@ -106,15 +96,15 @@ int main()
 		iters = iters + 1;
 		initializateArray(F, SIZE*SIZE, 0);
 		initializateArray(dist, SIZE*SIZE, 0);
-		//Calculate all interacting forces in the system
+
+		/***Calculate all interacting forces in the system***/
 		//calAllForcesGravitational_CPU(F,dist,m,x,SIZE,numVars);
    		calAllForcesGravitational_GPU(F,dist,m,x,SIZE,C);
-		//reorder particule Data.
-		printMatrix(F,SIZE,SIZE);
-		getchar();
+		/******************Reorder particule Data*******************/
+		printMatrix(F,SIZE,SIZE,"FUERZAS GRAVITACIONALES CALCULADAS");
 		index=SortSumAllColumns(F,SIZE);
-		printArray(index,SIZE);
-		//Unificate Particules
+		printArray(index,SIZE,"INDICE DE PARTICULAS ORDENADAS");
+		/******************Unificate Particules*********************/
 		int newSize=SIZE;
 		for(i=0;i<SIZE;i++)
 		{
@@ -122,12 +112,8 @@ int main()
 			Particules p=min(dist+(idx*SIZE),SIZE);
 			op1=idx;
 			op2=p.md;
-			//printf("i=%d 	m1=%.4f m2=%4f  \n",i,m[op1],m[op2]);
 			if(m[op1]!=-1 && m[op2]!=-1 && op1!=op2 && p.minD<radius)
 			{
-				//if(ii==2)
-				printf("i=%d 	m1=%.4f m2=%4f  op1=%d  op2=%d \n",i+1,m[op1],m[op2],op1,op2);
-				//printf("i=%d  ",op1);  
 				INTERACTIONS_EXIST=1;
 				if(m[op1] >= m[op2])
 				{
@@ -140,9 +126,8 @@ int main()
 					b=op1;
 				}
 				m[a]=m[a]+m[b];
-				//%move particulas according to masses
+				/******************move particulas according to masses************/
 				float dSum;
-		        printf("\nma=%.2f \n",m[a]);
 				for(k=0;k<C;k++)
 				{
 					dSum= dSum + pow((x[a*C+k]-x[b*C + k]),2);
@@ -150,8 +135,6 @@ int main()
 				d=sqrt(dSum);
 				distp=(m[b] / (m[a]+m[b]))*d;
 				t=distp/d;
-
-				//sum2Vector_MulxT
 				for (j = 0; j<C; j++)
 				{
 					x[a*C+j] = x[a*C + j] + t*(x[b*C + j] - x[a*C + j]);
@@ -165,20 +148,16 @@ int main()
 		}
 		free(index);
 
-		//CLEAN UP ELEMENT FROM MASS AND SPACE POINTS
+		/******************CLEAN UP ELEMENT FROM MASS AND SPACE POINTS*************/
 		clearMass(m,SIZE);
 		clearSpacePoints(x,SIZE,C);
 
-		printf("valores de masas\n",SIZE);
-		printArrayfloat(m,newSize);
-		printMatrix(x,newSize,C);
+		printArrayfloat(m,newSize,"VALORES DE LAS MASAS");
+		printMatrix(x,newSize,C,"PUNTOS EN EL ESPACIOS");
 		radius=radius*modifier;
 		SIZE=newSize;
 	}
-//printArray(index,SIZE);
-	//printMatrix(F,SIZE);
-	//printf("\n\n\n");
-	//printMatrix(dist,SIZE);
+	printMatrix(F,SIZE,SIZE,"RESULTADO FINAL");
 	free(m);
 	free(x);
 	free(F);
@@ -243,9 +222,6 @@ void calAllForcesGravitational_GPU(float *h_Forces,float *h_dist,float *h_mass,f
     float *d_mass;
     cudaMalloc((void **)&d_mass,sizeM);
     cudaMemcpy(d_mass,h_mass,sizeM,cudaMemcpyHostToDevice);
-    printf("desde gpu where N=%d y M=%d\n",M,N);
-	printMatrix(h_spacePoints,M,N); 	
-	getchar();
     kernel<<< grid,block>>>(d_Forces,d_spacePoints,d_dist,d_mass,M,N);
 	cudaThreadSynchronize();
     /*RECOVERY FORCES AND DISTANCE TO HOST*/

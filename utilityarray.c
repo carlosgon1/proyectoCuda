@@ -1,8 +1,8 @@
 #include <stdio.h>
-void printArray(int *array, int size)
+void printArray(int *array, int size,char *msg)
 {
 	int i;
-	printf("\n ************************ARRAY*************************\n");
+	printf("\n *********************ARRAY %s********************\n",msg);
 	for (i = 0; i<size; i++)
 	{
 		printf("%i ", array[i]);
@@ -11,9 +11,9 @@ void printArray(int *array, int size)
 	printf("\n");
 }
 
-void printArrayfloat(float *array, int size)
+void printArrayfloat(float *array, int size,char *msg)
 {
-	printf("\n ************************ARRAY*************************\n");
+	printf("\n ******************ARRAY %s***********************\n",msg);
 	int i;
 	for (i = 0; i<size; i++)
 	{
@@ -24,10 +24,10 @@ void printArrayfloat(float *array, int size)
 }
 
 
-void printMatrix(float *matrix, int sizeRow, int sizeCol)
+void printMatrix(float *matrix, int sizeRow, int sizeCol,char *msg)
 {
 	int i, j;
-	printf("\n ************************MATRIX**************************\n");
+	printf("\n *******************MATRIX %s***********************\n",msg);
 	for (i = 0; i<sizeRow; i++)
 	{
 		for (j = 0; j<sizeCol; j++)
