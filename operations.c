@@ -1,7 +1,6 @@
 #include <math.h>
 #include <stdlib.h>
 #define G 6.67e-11
-
 int *bubblesort(float *sumatoria,int *index,int size)
 {
 	int i,j;
@@ -82,6 +81,10 @@ int *SortSumAllColumns(float *matrix,int size)
 }
 
 
+
+
+
+ 
 
 void calAllForcesGravitational_CPU(float *F,float *dist,float *m,float *x,int SIZE,int numVars)
 {

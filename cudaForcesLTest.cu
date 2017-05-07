@@ -4,8 +4,8 @@
 #include <cuda.h>
 #include "utilityarray.h"
 #include "operations.h" 
-#define R 30
-#define C 3
+#define R 5636
+#define C 1000
 
 typedef struct
 {
@@ -19,39 +19,8 @@ __global__ void kernel(float *F,float *points,float *dist,float *mass,int M,int 
 Particules min(float *vector,int SIZE);
 
 
-float x1[R][C]={   {0.1506, 0.0898, 0.0229},
-					{0.2145, 0.1316, 0.2570},
-					{0.1903, 0.1984, 0.2603},
-					{0.2757, 0.0004, 0.2116},
-					{0.0309, 0.1581, 0.0190},
-					{0.2663, 0.2360, 0.2723},
-					{0.1939, 0.0978, 0.1605},
-					{0.2810, 0.2015, 0.0249},
-					{0.1758, 0.0134, 0.1723},
-					{0.1659, 0.2623, 0.1682},
-					{0.5780, 0.5930, 0.5035},
-					{0.5192, 0.3544, 0.3773},
-					{0.4037, 0.5772, 0.6048},
-					{0.4352, 0.4619, 0.4602},
-					{0.5692, 0.4652, 0.5358},
-					{0.4934, 0.5750, 0.4121},
-					{0.5949, 0.5094, 0.5401},
-					{0.5965, 0.5426, 0.5782},
-				    {0.5244, 0.5962, 0.3561},
-				    {0.4081, 0.4082, 0.5684},
-				    {0.9133, 0.8158, 0.8304},
-				    {0.9095, 1.0000, 0.7354},
-				    {0.8366, 0.8548, 0.7556},
-				    {0.8147, 0.8896, 0.9289},
-				    {0.9720, 0.8373, 0.9794},
-				    {0.8591, 0.8378, 0.7319},
-		   		    {0.9793, 0.9635, 0.7751},
-					{0.7467, 0.8534, 0.8549}, 
-				    {0.8930, 0.9876, 0.9589},
-				    {0.8329, 0.9730, 0.7375}
-			    };
- 
- 
+float x1[R][C]={ 	
+	
 int main()
 {  
     int i,k,j;
@@ -106,18 +75,18 @@ int main()
 		initializateArray(dist, SIZE*SIZE, 0);
 
 		/***Calculate all interacting forces in the system***/
-		cudaEventRecord(start, 0);
+		calAllForcesGravitational_GPU(F,dist,m,x,SIZE,C);
+		/*cudaEventRecord(start, 0);
 		calAllForcesGravitational_CPU(F,dist,m,x,SIZE,C);
-		//calAllForcesGravitational_GPU(F,dist,m,x,SIZE,C);
 		cudaEventRecord(stop, 0);    
     	cudaEventSynchronize(stop); 
     	cudaEventElapsedTime( &time, start, stop );
-    	printf("TIEMPO DE EJECUCION EN GPU: %f ms\n\n",time);
+    	printf("TIEMPO DE EJECUCION EN CPU: %f ms\n",time);
     	getchar();
 		/******************Reorder particule Data*******************/
-		printMatrix(F,SIZE,SIZE,"FUERZAS GRAVITACIONALES CALCULADAS");
+		//printMatrix(F,SIZE,SIZE,"FUERZAS GRAVITACIONALES CALCULADAS");
 		index=SortSumAllColumns(F,SIZE);
-		printArray(index,SIZE,"INDICE DE PARTICULAS ORDENADAS");
+		//printArray(index,SIZE,"INDICE DE PARTICULAS ORDENADAS");
 		/******************Unificate Particules*********************/
 		int newSize=SIZE;
 		for(i=0;i<SIZE;i++)
@@ -166,12 +135,12 @@ int main()
 		clearMass(m,SIZE);
 		clearSpacePoints(x,SIZE,C);
 
-		printArrayfloat(m,newSize,"VALORES DE LAS MASAS");
-		printMatrix(x,newSize,C,"PUNTOS EN EL ESPACIOS");
+		//printArrayfloat(m,newSize,"VALORES DE LAS MASAS");
+		//printMatrix(x,newSize,C,"PUNTOS EN EL ESPACIOS");
 		radius=radius*modifier;
 		SIZE=newSize;
 	}
-	printMatrix(F,SIZE,SIZE,"RESULTADO FINAL");
+	//printMatrix(x,SIZE,C,"RESULTADO FINAL");
 	cudaEventDestroy( start ); // GC DEL TEMPORIZADOR
     cudaEventDestroy( stop );  // GC DEL TEMPORIZADOR
 	free(m);
@@ -213,6 +182,13 @@ void calAllForcesGravitational_GPU(float *h_Forces,float *h_dist,float *h_mass,f
 {
 	size_t sizeN = N * sizeof(float); 			 
     size_t sizeM = M * sizeof(float); 
+    // GPU'S TIMER VARIABLES
+  	float time; 
+  	cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+
+    //////////////////////////////////////
 
     /*CONFIGURATION FOR KERNEL FOR TO WORK WHIT MATRIX 5632 x 5632 */
     dim3 grid(256,256);
@@ -238,8 +214,16 @@ void calAllForcesGravitational_GPU(float *h_Forces,float *h_dist,float *h_mass,f
     float *d_mass;
     cudaMalloc((void **)&d_mass,sizeM);
     cudaMemcpy(d_mass,h_mass,sizeM,cudaMemcpyHostToDevice);
+    /*********************APPLY TIMER***********************************/
+    cudaEventRecord(start, 0); 
     kernel<<< grid,block>>>(d_Forces,d_spacePoints,d_dist,d_mass,M,N);
+	cudaEventRecord(stop, 0);    
+    cudaEventSynchronize(stop); 
+    cudaEventElapsedTime( &time, start, stop );
 	cudaThreadSynchronize();
+	printf("TIEMPO DE EJECUCION EN GPU: %f ms\n",time);
+    getchar();
+
     /*RECOVERY FORCES AND DISTANCE TO HOST*/
     cudaMemcpy(h_Forces,d_Forces,sizeM*sizeM,cudaMemcpyDeviceToHost);
     checkCUDAError("cudaMemcpy");
